@@ -1,0 +1,671 @@
+<title>Shoreline PTO Report</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1:      #fcfcfb;
+  --page-plane:     #f9f9f7;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --muted:          #898781;
+  --gridline:       #e1e0d9;
+  --baseline:       #c3c2b7;
+  --border:         rgba(11,11,11,0.10);
+  --series-1:       #2a78d6; /* income / received - blue */
+  --series-2:       #eb6834; /* expense / disbursed - orange */
+  --success:        #006300;
+  --critical:       #d03b3b;
+  --warning:        #fab219;
+  --warning-ink:    #6b4a00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --success:        #0ca30c;
+    --critical:       #e66767;
+    --warning:        #fab219;
+    --warning-ink:    #ffe1a6;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1:      #1a1a19;
+  --page-plane:     #0d0d0d;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --muted:          #898781;
+  --gridline:       #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255,255,255,0.10);
+  --series-1:       #3987e5;
+  --series-2:       #d95926;
+  --success:        #0ca30c;
+  --critical:       #e66767;
+  --warning:        #fab219;
+  --warning-ink:    #ffe1a6;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--page-plane); }
+.viz-root {
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  padding: 28px 20px 60px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+
+header.page-head { margin-bottom: 24px; }
+header.page-head h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+header.page-head p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h2 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+.card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 16px; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.stat-tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.stat-tile .value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.stat-tile .delta { font-size: 12px; margin-top: 6px; font-weight: 600; }
+.stat-tile .delta.up { color: var(--success); }
+.stat-tile .delta.down { color: var(--critical); }
+
+.callout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warning);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.callout .icon { font-size: 16px; line-height: 1.4; }
+.callout .title { font-weight: 700; font-size: 13px; margin: 0 0 4px; color: var(--warning-ink); }
+.callout p { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 8px; }
+.callout ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); }
+.callout li { margin-bottom: 2px; }
+
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+.legend .item { display: flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.bar-list { display: flex; flex-direction: column; gap: 2px; }
+.bar-row { display: grid; grid-template-columns: 170px 1fr 78px; align-items: center; gap: 10px; height: 24px; }
+.bar-row .name { font-size: 12.5px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-row .track { position: relative; height: 20px; background: transparent; }
+.bar-row .fill { position: absolute; left: 0; top: 2px; height: 16px; border-radius: 4px; }
+.bar-row .val { font-size: 12.5px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+.bar-section-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin: 16px 0 8px; }
+.bar-section-title:first-child { margin-top: 0; }
+
+.chart-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--text-primary);
+  color: var(--surface-1);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.08s;
+  max-width: 220px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.chart-tooltip .t-title { font-weight: 700; margin-bottom: 3px; }
+.chart-tooltip .t-row { display: flex; justify-content: space-between; gap: 12px; }
+
+.month-chart { display: flex; align-items: flex-end; gap: 10px; height: 220px; padding: 10px 4px 0; position: relative; border-bottom: 1px solid var(--baseline); }
+.month-chart .gridline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--gridline); font-size: 10px; color: var(--muted); }
+.month-chart .gridline span { position: absolute; left: -6px; top: -7px; transform: translateX(-100%); background: var(--surface-1); padding-right: 4px; }
+.month-group { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; z-index: 1; }
+.month-group .bars { display: flex; gap: 2px; align-items: flex-end; height: 200px; }
+.month-group .bar { width: 12px; border-radius: 4px 4px 0 0; cursor: pointer; }
+.month-group .x-label { font-size: 10px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+
+.line-chart-wrap { position: relative; }
+.line-chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.line-chart-wrap .hover-dot { opacity: 0; }
+
+table.ledger { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.ledger th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--baseline); cursor: pointer; user-select: none; white-space: nowrap; }
+table.ledger th.num, table.ledger td.num { text-align: right; }
+table.ledger td { padding: 7px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+table.ledger td.activity-cell { font-variant-numeric: normal; }
+table.ledger tr.flagged td { background: color-mix(in srgb, var(--warning) 10%, transparent); }
+table.ledger tr:hover td { background: var(--page-plane); }
+table.ledger tr.flagged:hover td { background: color-mix(in srgb, var(--warning) 16%, transparent); }
+.tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 100px; background: var(--page-plane); border: 1px solid var(--border); color: var(--text-secondary); }
+.tag.missing { border-color: var(--warning); color: var(--warning-ink); }
+
+.table-scroll { overflow-x: auto; }
+.sort-arrow { font-size: 9px; margin-left: 3px; color: var(--muted); }
+
+.footnote { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+.filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="date"] {
+  font-size: 12.5px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-primary); font-family: inherit;
+}
+.filter-bar input[type="text"] { min-width: 180px; }
+.filter-bar .reset-btn {
+  font-size: 12.5px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+}
+.filter-bar .reset-btn:hover { background: var(--surface-1); color: var(--text-primary); }
+.filter-results { font-size: 12px; color: var(--muted); margin: -10px 0 18px; }
+.empty-state { font-size: 12.5px; color: var(--muted); padding: 24px 0; text-align: center; }
+.chart-note { font-size: 11.5px; color: var(--warning-ink); background: color-mix(in srgb, var(--warning) 14%, transparent); border-radius: 8px; padding: 6px 10px; margin-bottom: 14px; display: none; }
+.chart-note.show { display: block; }
+
+.fund-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.fund-metric { background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.fund-metric .label { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; }
+.fund-metric .value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.fund-metric .value.cost { color: var(--series-2); }
+.fund-metric .value.revenue { color: var(--series-1); }
+.fund-metric .sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+.fund-timeline { padding: 10px 6px 28px; margin-bottom: 8px; }
+.fund-track { position: relative; height: 2px; background: var(--baseline); margin: 28px 60px 0; }
+.fund-point { position: absolute; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+.fund-point .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--surface-1); }
+.fund-point.cost .dot { background: var(--series-2); }
+.fund-point.revenue .dot { background: var(--series-1); }
+.fund-point .plabel { position: absolute; top: 16px; width: 180px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+.fund-point.cost .plabel { left: 0; text-align: left; }
+.fund-point.revenue .plabel { right: 0; text-align: right; }
+.fund-point .plabel b { color: var(--text-primary); display: block; font-size: 12.5px; }
+.fund-gap-label { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); font-size: 11.5px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; background: var(--surface-1); padding: 0 6px; }
+
+.fund-note { font-size: 12.5px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 4px; }
+.fund-note b { color: var(--text-primary); }
+
+@media (max-width: 560px) {
+  .fund-stats { grid-template-columns: 1fr; }
+  .fund-track { margin: 28px 20px 0; }
+  .fund-point .plabel { width: 130px; font-size: 11px; }
+  .fund-gap-label { white-space: normal; width: 200px; text-align: center; top: -34px; }
+}
+</style>
+
+<div class="viz-root">
+  <div class="wrap">
+    <header class="page-head">
+      <h1>Shoreline PTO Activity Report</h1>
+      <p>Source: 2026_09_13_Activity.xlsx &middot; 33 entries, Sep 18 2024 &ndash; May 7 2026 &middot; Generated Sep 13, 2026</p>
+    </header>
+
+    <div class="filter-bar" id="filterBar">
+      <select id="fDateRange" aria-label="Date range">
+        <option value="all">All time</option>
+        <option value="2024-25">2024–25 school year</option>
+        <option value="2025-26">2025–26 school year</option>
+        <option value="custom">Custom range…</option>
+      </select>
+      <input id="fDateFrom" type="date" aria-label="From date" style="display:none" />
+      <input id="fDateTo" type="date" aria-label="To date" style="display:none" />
+      <select id="fKind" aria-label="Entry type">
+        <option value="all">All entries</option>
+        <option value="income">Income only</option>
+        <option value="expense">Expenses only</option>
+      </select>
+      <select id="fCategory" aria-label="Category"></select>
+      <input id="fSearch" type="text" placeholder="Search activity…" aria-label="Search activity" />
+      <button class="reset-btn" id="fReset" type="button">Reset filters</button>
+    </div>
+    <p class="filter-results" id="filterResults"></p>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="callout" id="dataQualityCallout"></div>
+
+    <div class="card">
+      <h2>Income &amp; expenses by category</h2>
+      <p class="sub">All 33 recorded entries, grouped by source / recipient</p>
+      <p class="footnote" style="margin:-4px 0 12px">Row 32, "Reimbursement - Karen Haie Popcorn," is grouped under Karen Hain (Popcorn/Supplies) as a likely spelling variant &mdash; worth confirming.</p>
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--series-1)"></span>Received</span>
+        <span class="item"><span class="swatch" style="background:var(--series-2)"></span>Disbursed</span>
+      </div>
+      <div id="categoryBars"></div>
+    </div>
+
+    <div class="card">
+      <h2>Spirit Gear fundraiser — a closer look</h2>
+      <p class="sub">The ledger's two largest line items, and how they connect</p>
+      <div class="fund-stats">
+        <div class="fund-metric">
+          <div class="label">Cost — Mr. Bill's screen printing</div>
+          <div class="value cost">$4,700.00</div>
+          <div class="sub">Paid Mar 4, 2025 (row 12)</div>
+        </div>
+        <div class="fund-metric">
+          <div class="label">Revenue — sale proceeds</div>
+          <div class="value revenue">$6,751.00</div>
+          <div class="sub">Received Dec 2, 2025 (row 6)</div>
+        </div>
+        <div class="fund-metric">
+          <div class="label">Net profit</div>
+          <div class="value" style="color:var(--success)">$2,051.00</div>
+          <div class="sub">30.4% margin on revenue &middot; 43.6% markup on cost</div>
+        </div>
+      </div>
+      <div class="fund-timeline">
+        <div class="fund-track">
+          <div class="fund-gap-label">273 days between paying for shirts and collecting sale proceeds</div>
+          <div class="fund-point cost" style="left:0%">
+            <div class="dot"></div>
+            <div class="plabel"><b>Mar 4, 2025</b>PTO pays Mr. Bill's $4,700 up front</div>
+          </div>
+          <div class="fund-point revenue" style="left:100%">
+            <div class="dot"></div>
+            <div class="plabel"><b>Dec 2, 2025</b>$6,751 in sale proceeds deposited</div>
+          </div>
+        </div>
+      </div>
+      <div class="fund-note">
+        The PTO fronted <b>$4,700</b> for shirt printing roughly <b>9 months</b> before the matching <b>$6,751</b> in sale proceeds came in — worth remembering when budgeting cash on hand for the next order. Once both sides landed, this single fundraiser accounted for <b>85.3%</b> of all money the PTO received and <b>54.5%</b> of everything it spent over this entire ledger (Sep 2024 &ndash; May 2026) &mdash; it isn't just the biggest line item, it's most of the whole picture.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Monthly cash flow</h2>
+      <p class="sub">Received vs. disbursed by month (months with no activity omitted)</p>
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--series-1)"></span>Received</span>
+        <span class="item"><span class="swatch" style="background:var(--series-2)"></span>Disbursed</span>
+      </div>
+      <div class="month-chart" id="monthChart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Balance over time</h2>
+      <p class="sub">Running balance as recorded in the ledger, in entry order</p>
+      <p class="chart-note" id="balanceFilterNote">Showing every entry in the selected date range — the type and category filters above don't apply here, since the running balance needs every entry to stay accurate.</p>
+      <div class="line-chart-wrap" id="lineChart"></div>
+      <p class="footnote">The ledger's Date column is not always in chronological order (e.g. row 1 is dated Sep 19 2024 but row 2, entered after it, is dated Sep 18 2024) &mdash; this chart follows the sheet's actual row order, which is what the running Balance column was computed against. Hover a point for its date and activity.</p>
+    </div>
+
+    <div class="card">
+      <h2>Full ledger</h2>
+      <p class="sub">Reflects the filters above &middot; click a column header to sort</p>
+      <div class="table-scroll">
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th data-key="date">Date<span class="sort-arrow"></span></th>
+              <th data-key="activity">Activity<span class="sort-arrow"></span></th>
+              <th data-key="category">Category<span class="sort-arrow"></span></th>
+              <th data-key="received" class="num">Received<span class="sort-arrow"></span></th>
+              <th data-key="disbursed" class="num">Disbursed<span class="sort-arrow"></span></th>
+              <th data-key="balance" class="num">Balance<span class="sort-arrow"></span></th>
+            </tr>
+          </thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="chart-tooltip" id="tooltip"></div>
+
+<script>
+const ROWS = [{"row": 1, "date": "2024-09-19", "activity": null, "received": null, "disbursed": null, "balance": 3993.24, "kind": "opening", "category": "Opening Balance"}, {"row": 2, "date": "2024-09-18", "activity": "Gordon Foods - Karen Hain - Popcorn", "received": null, "disbursed": 162.56, "balance": 3830.68, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 3, "date": "2024-10-23", "activity": "Walmart - Karen Hain - Hot Chocolate", "received": null, "disbursed": 65.26, "balance": 3765.4199999999996, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 4, "date": "2024-10-24", "activity": "Walmart - Karen Hain - Candy", "received": null, "disbursed": 109.71, "balance": 3655.7099999999996, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 5, "date": "2024-10-16", "activity": "Amazon - Karen Hain - Glow Sticks", "received": null, "disbursed": 52.19, "balance": 3603.5199999999995, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 6, "date": "2025-12-02", "activity": "Spirit Gear Sale Proceeds", "received": 6751, "disbursed": null, "balance": 10354.52, "kind": "income", "category": "Spirit Gear Sale"}, {"row": 7, "date": "2025-01-07", "activity": "BOX TOPS", "received": 131.6, "disbursed": null, "balance": 10486.12, "kind": "income", "category": "Box Tops"}, {"row": 8, "date": "2025-02-07", "activity": "Karen Hain", "received": null, "disbursed": 475.93, "balance": 10010.19, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 9, "date": "2025-02-07", "activity": "Jamie Gugle", "received": null, "disbursed": 48.84, "balance": 9961.35, "kind": "expense", "category": "Jamie Gugle"}, {"row": 10, "date": "2025-02-07", "activity": "Kami Moore", "received": null, "disbursed": 116.32, "balance": 9845.03, "kind": "expense", "category": "Kami Moore"}, {"row": 11, "date": "2025-02-07", "activity": "Stephanie Butler", "received": null, "disbursed": 38.97, "balance": 9806.060000000001, "kind": "expense", "category": "Stephanie Butler"}, {"row": 12, "date": "2025-03-04", "activity": "Mr. Bill's (t-shirt screen printing - Spirit Gear)", "received": null, "disbursed": 4700, "balance": 5106.060000000001, "kind": "expense", "category": "Spirit Gear Printing"}, {"row": 13, "date": "2025-04-02", "activity": "Box Tops", "received": 166.6, "disbursed": null, "balance": 5272.660000000002, "kind": "income", "category": "Box Tops"}, {"row": 14, "date": "2025-04-14", "activity": "Karen Hain GFS", "received": null, "disbursed": 122.88, "balance": 5149.780000000002, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 15, "date": "2025-05-02", "activity": "Box Tops", "received": 125, "disbursed": null, "balance": 5274.780000000002, "kind": "income", "category": "Box Tops"}, {"row": 16, "date": "2025-05-06", "activity": "Little Ceasars", "received": null, "disbursed": 163.99, "balance": 5110.790000000002, "kind": "expense", "category": "Pizza (Little Caesars)"}, {"row": 17, "date": "2025-05-06", "activity": "Little Ceasars", "received": null, "disbursed": 163.99, "balance": 4946.800000000002, "kind": "expense", "category": "Pizza (Little Caesars)"}, {"row": 18, "date": "2025-05-07", "activity": "Box tops", "received": 195.3, "disbursed": null, "balance": 5142.100000000002, "kind": "income", "category": "Box Tops"}, {"row": 19, "date": "2025-05-30", "activity": "Reimbursement - Karen Hain Popcorn", "received": null, "disbursed": 122.88, "balance": 5019.220000000002, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 20, "date": "2025-10-03", "activity": "Amazon - Popcorn Machine Ealy", "received": null, "disbursed": 388.63, "balance": 4630.590000000002, "kind": "expense", "category": "Equipment"}, {"row": 21, "date": "2025-09-23", "activity": "Reimbursement - Karen Hain Popcorn", "received": null, "disbursed": 117.7, "balance": 4512.890000000002, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 22, "date": "2025-11-07", "activity": "Reimbursement - Karen HainPopcorn/Trunk or Treat", "received": null, "disbursed": 122.72, "balance": 4390.170000000002, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 23, "date": "2025-10-05", "activity": "Reimbursement - Jamie Gugle Trunk or Treat", "received": null, "disbursed": 110.05, "balance": 4280.120000000002, "kind": "expense", "category": "Jamie Gugle"}, {"row": 24, "date": "2026-01-08", "activity": "Reimbursement - Karen Hain", "received": null, "disbursed": 81.72, "balance": 4198.4000000000015, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 25, "date": "2025-11-24", "activity": "CTC - Christmas Cookies", "received": null, "disbursed": 125, "balance": 4073.4000000000015, "kind": "expense", "category": "Christmas Cookies (CTC)"}, {"row": 26, "date": "2026-01-29", "activity": "Reimbursement - Becky Olson", "received": null, "disbursed": 110.75, "balance": 3962.6500000000015, "kind": "expense", "category": "Becky Olson"}, {"row": 27, "date": "2026-01-29", "activity": "Reimbursement - Michelle Cooper", "received": null, "disbursed": 189.16, "balance": 3773.4900000000016, "kind": "expense", "category": "Michelle Cooper"}, {"row": 28, "date": "2026-01-30", "activity": "Popcorn Machine", "received": null, "disbursed": 356.76, "balance": 3416.7300000000014, "kind": "expense", "category": "Equipment"}, {"row": 29, "date": "2026-03-23", "activity": "Box Tops", "received": 404.7, "disbursed": null, "balance": 3821.430000000001, "kind": "income", "category": "Box Tops"}, {"row": 30, "date": "2026-05-05", "activity": "Box Tops", "received": 140.2, "disbursed": null, "balance": 3961.630000000001, "kind": "income", "category": "Box Tops"}, {"row": 31, "date": "2026-05-07", "activity": "Reimbursement - Beth Whaley - Bounce House", "received": null, "disbursed": 300, "balance": 3661.630000000001, "kind": "expense", "category": "Beth Whaley"}, {"row": 32, "date": "2026-05-07", "activity": "Reimbursement - Karen Haie Popcorn", "received": null, "disbursed": 36.86, "balance": 3624.770000000001, "kind": "expense", "category": "Karen Hain (Popcorn/Supplies)"}, {"row": 33, "date": "2026-05-07", "activity": "Reimbursement - Michelle Cooper Staff Lunch", "received": null, "disbursed": 341.53, "balance": 3283.2400000000007, "kind": "expense", "category": "Michelle Cooper"}];
+
+const fmt = n => n.toLocaleString('en-US', {style:'currency', currency:'USD'});
+const tooltip = document.getElementById('tooltip');
+function showTip(x, y, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  const rect = tooltip.getBoundingClientRect();
+  let left = x + 14, top = y + 14;
+  if (left + rect.width > window.innerWidth) left = x - rect.width - 14;
+  if (top + rect.height > window.innerHeight) top = y - rect.height - 14;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+function hideTip() { tooltip.style.opacity = 0; }
+
+const ALL_TXNS = ROWS.filter(r => r.kind !== 'opening');
+const opening = ROWS.find(r => r.kind === 'opening');
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ---- Filter bar wiring ----
+const fDateRange = document.getElementById('fDateRange');
+const fDateFrom = document.getElementById('fDateFrom');
+const fDateTo = document.getElementById('fDateTo');
+const fKind = document.getElementById('fKind');
+const fCategory = document.getElementById('fCategory');
+const fSearch = document.getElementById('fSearch');
+const fReset = document.getElementById('fReset');
+
+const categories = [...new Set(ALL_TXNS.map(r => r.category))].sort();
+fCategory.innerHTML = '<option value="all">All categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+const SCHOOL_YEARS = { '2024-25': ['2024-08-01','2025-07-31'], '2025-26': ['2025-08-01','2026-07-31'] };
+
+function dateBounds() {
+  const preset = fDateRange.value;
+  if (preset === 'all') return [null, null];
+  if (preset === 'custom') return [fDateFrom.value || null, fDateTo.value || null];
+  return SCHOOL_YEARS[preset] || [null, null];
+}
+function inRange(date, from, to) {
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+function typeCatSearchActive() {
+  return fKind.value !== 'all' || fCategory.value !== 'all' || fSearch.value.trim() !== '';
+}
+function filteredTxns() {
+  const [from, to] = dateBounds();
+  const kind = fKind.value, cat = fCategory.value, search = fSearch.value.toLowerCase().trim();
+  return ALL_TXNS.filter(r => {
+    if (!inRange(r.date, from, to)) return false;
+    if (kind !== 'all' && r.kind !== kind) return false;
+    if (cat !== 'all' && r.category !== cat) return false;
+    if (search && !((r.activity||'').toLowerCase().includes(search) || r.category.toLowerCase().includes(search))) return false;
+    return true;
+  });
+}
+function balanceRows() {
+  const [from, to] = dateBounds();
+  return ROWS.filter(r => inRange(r.date, from, to));
+}
+
+fDateRange.addEventListener('change', () => {
+  const custom = fDateRange.value === 'custom';
+  fDateFrom.style.display = custom ? '' : 'none';
+  fDateTo.style.display = custom ? '' : 'none';
+  renderAll();
+});
+[fDateFrom, fDateTo, fKind, fCategory].forEach(el => el.addEventListener('change', renderAll));
+fSearch.addEventListener('input', renderAll);
+fReset.addEventListener('click', () => {
+  fDateRange.value = 'all'; fDateFrom.value = ''; fDateTo.value = '';
+  fDateFrom.style.display = 'none'; fDateTo.style.display = 'none';
+  fKind.value = 'all'; fCategory.value = 'all'; fSearch.value = '';
+  renderAll();
+});
+
+// ---- Stat tiles ----
+function renderStats(rows, balRows) {
+  const totalReceived = rows.reduce((s,r) => s + (r.received||0), 0);
+  const totalDisbursed = rows.reduce((s,r) => s + (r.disbursed||0), 0);
+  const netChange = totalReceived - totalDisbursed;
+  const startBal = balRows.length ? balRows[0].balance : opening.balance;
+  const endBal = balRows.length ? balRows[balRows.length-1].balance : opening.balance;
+  const stats = [
+    {label:'Received', value: fmt(totalReceived)},
+    {label:'Disbursed', value: fmt(totalDisbursed)},
+    {label:'Net change', value: fmt(netChange), delta: netChange},
+    {label:'Ending balance', value: fmt(endBal), sub: balRows.length ? ('as of ' + balRows[0].date + ' → ' + balRows[balRows.length-1].date) : 'no entries in range'},
+  ];
+  document.getElementById('statGrid').innerHTML = stats.map(s => `
+    <div class="stat-tile">
+      <div class="label">${s.label}</div>
+      <div class="value">${s.value}</div>
+      ${s.delta !== undefined ? `<div class="delta ${s.delta >= 0 ? 'up' : 'down'}">${s.delta >= 0 ? '↑' : '↓'} vs starting balance of ${fmt(startBal)}</div>` : ''}
+      ${s.sub ? `<div class="delta" style="color:var(--muted)">${s.sub}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ---- Data quality callout ----
+function renderCallout(rows) {
+  const flagged = rows.filter(r => !r.activity);
+  const dqEl = document.getElementById('dataQualityCallout');
+  if (flagged.length === 0) {
+    dqEl.style.borderLeftColor = 'var(--success)';
+    dqEl.innerHTML = `
+      <div class="icon">✅</div>
+      <div>
+        <p class="title" style="color:var(--success)">Every entry in view has an activity description</p>
+        <p style="margin:0">No missing-description follow-ups remain.</p>
+      </div>
+    `;
+  } else {
+    dqEl.style.borderLeftColor = 'var(--warning)';
+    dqEl.innerHTML = `
+      <div class="icon">⚠️</div>
+      <div>
+        <p class="title">${flagged.length} entries in view are missing an activity description</p>
+        <p>These rows have a dollar amount and a balance but no note explaining what they were for:</p>
+        <ul>
+          ${flagged.map(r => `<li>Row ${r.row} &middot; ${r.date} &middot; ${r.received ? 'received ' + fmt(r.received) : 'disbursed ' + fmt(r.disbursed)}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+}
+
+// ---- Category bars ----
+function renderCategoryBars(rows) {
+  const totalReceived = rows.reduce((s,r) => s + (r.received||0), 0);
+  const totalDisbursed = rows.reduce((s,r) => s + (r.disbursed||0), 0);
+  function rollup(kind) {
+    const m = {};
+    rows.filter(r => r.kind === kind).forEach(r => {
+      const amt = kind === 'income' ? r.received : r.disbursed;
+      m[r.category] = (m[r.category] || 0) + amt;
+    });
+    return Object.entries(m).sort((a,b) => b[1]-a[1]);
+  }
+  const incomeCats = rollup('income');
+  const expenseCats = rollup('expense');
+  const el = document.getElementById('categoryBars');
+  if (!incomeCats.length && !expenseCats.length) {
+    el.innerHTML = '<div class="empty-state">No entries match the current filters.</div>';
+    return;
+  }
+  const catMax = Math.max(1, ...incomeCats.map(c=>c[1]), ...expenseCats.map(c=>c[1]));
+  function barListHtml(cats, color) {
+    return cats.map(([name, val]) => `
+      <div class="bar-row">
+        <div class="name" title="${name}">${name}</div>
+        <div class="track"><div class="fill" style="width:${(val/catMax*100).toFixed(1)}%; background:${color}"></div></div>
+        <div class="val">${fmt(val)}</div>
+      </div>
+    `).join('');
+  }
+  el.innerHTML = `
+    ${incomeCats.length ? `<div class="bar-section-title">Income (${fmt(totalReceived)})</div><div class="bar-list">${barListHtml(incomeCats, 'var(--series-1)')}</div>` : ''}
+    ${expenseCats.length ? `<div class="bar-section-title">Expenses (${fmt(totalDisbursed)})</div><div class="bar-list">${barListHtml(expenseCats, 'var(--series-2)')}</div>` : ''}
+  `;
+}
+
+// ---- Monthly chart ----
+function renderMonthChart(rows) {
+  const monthChart = document.getElementById('monthChart');
+  const monthly = {};
+  rows.forEach(r => {
+    const ym = r.date.slice(0,7);
+    if (!monthly[ym]) monthly[ym] = {received:0, disbursed:0};
+    if (r.received) monthly[ym].received += r.received;
+    if (r.disbursed) monthly[ym].disbursed += r.disbursed;
+  });
+  const months = Object.keys(monthly).sort();
+  if (!months.length) {
+    monthChart.innerHTML = '<div class="empty-state" style="width:100%">No entries match the current filters.</div>';
+    return;
+  }
+  const monthMax = Math.max(...months.map(m => Math.max(monthly[m].received, monthly[m].disbursed)));
+  const niceMax = Math.max(1, Math.ceil(monthMax / 1000) * 1000);
+  const chartH = 200, gridSteps = 4;
+  let gridHtml = '';
+  for (let i = 0; i <= gridSteps; i++) {
+    const val = niceMax * i / gridSteps;
+    const bottom = (val / niceMax) * chartH;
+    gridHtml += `<div class="gridline" style="bottom:${bottom}px"><span>${val >= 1000 ? (val/1000)+'k' : val}</span></div>`;
+  }
+  monthChart.innerHTML = gridHtml + months.map(m => {
+    const d = monthly[m];
+    const [y, mo] = m.split('-');
+    const label = monthNames[parseInt(mo,10)-1] + ' ' + y.slice(2);
+    const rH = (d.received / niceMax * chartH).toFixed(1);
+    const dH = (d.disbursed / niceMax * chartH).toFixed(1);
+    return `
+      <div class="month-group">
+        <div class="bars">
+          <div class="bar" data-tip="${label} — Received: ${fmt(d.received)}" style="height:${rH}px; background:var(--series-1)"></div>
+          <div class="bar" data-tip="${label} — Disbursed: ${fmt(d.disbursed)}" style="height:${dH}px; background:var(--series-2)"></div>
+        </div>
+        <div class="x-label">${label}</div>
+      </div>
+    `;
+  }).join('');
+  monthChart.querySelectorAll('.bar').forEach(el => {
+    el.addEventListener('mousemove', e => showTip(e.clientX, e.clientY, el.dataset.tip));
+    el.addEventListener('mouseleave', hideTip);
+  });
+}
+
+// ---- Balance line chart (entry order, as recorded; date-range filter only) ----
+function renderBalanceChart(rows) {
+  document.getElementById('balanceFilterNote').classList.toggle('show', typeCatSearchActive());
+  const wrap = document.getElementById('lineChart');
+  if (rows.length < 2) {
+    wrap.innerHTML = '<div class="empty-state">Not enough entries in range to plot a trend.</div>';
+    return;
+  }
+  const W = 1000, H = 260, padL = 50, padR = 16, padT = 16, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const balVals = rows.map(r => r.balance);
+  const balMin = Math.min(...balVals), balMax = Math.max(...balVals);
+  const pad = (balMax - balMin) * 0.1 || 100;
+  const yMin = Math.max(0, balMin - pad), yMax = balMax + pad;
+  const xFor = i => padL + (i / (rows.length - 1)) * plotW;
+  const yFor = v => padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+  const linePath = rows.map((r,i) => (i===0?'M':'L') + xFor(i).toFixed(1) + ',' + yFor(r.balance).toFixed(1)).join(' ');
+  const areaPath = linePath + ` L${xFor(rows.length-1).toFixed(1)},${(padT+plotH).toFixed(1)} L${xFor(0).toFixed(1)},${(padT+plotH).toFixed(1)} Z`;
+  const yTicks = 4;
+  let lineGrid = '';
+  for (let i = 0; i <= yTicks; i++) {
+    const v = yMin + (yMax - yMin) * i / yTicks;
+    const y = yFor(v);
+    lineGrid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--gridline)" stroke-width="1"/>`;
+    lineGrid += `<text x="${padL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(v).replace('.00','')}</text>`;
+  }
+  const dots = rows.map((r,i) => `<circle class="hover-dot" data-i="${i}" cx="${xFor(i).toFixed(1)}" cy="${yFor(r.balance).toFixed(1)}" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>`).join('');
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" id="balanceSvg">
+      ${lineGrid}
+      <path d="${areaPath}" fill="var(--series-1)" opacity="0.1" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${xFor(rows.length-1).toFixed(1)}" cy="${yFor(rows[rows.length-1].balance).toFixed(1)}" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>
+      <text x="${(xFor(rows.length-1)-6).toFixed(1)}" y="${(yFor(rows[rows.length-1].balance)-10).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="var(--text-primary)">${fmt(rows[rows.length-1].balance)}</text>
+      <line class="crosshair" x1="0" y1="${padT}" x2="0" y2="${padT+plotH}" stroke="var(--baseline)" stroke-width="1" opacity="0"/>
+      ${dots}
+      <rect id="hoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent"/>
+    </svg>
+  `;
+  const svgEl = document.getElementById('balanceSvg');
+  const catcher = document.getElementById('hoverCatcher');
+  const crosshair = svgEl.querySelector('.crosshair');
+  catcher.addEventListener('mousemove', e => {
+    const ptRect = svgEl.getBoundingClientRect();
+    const scaleX = W / ptRect.width;
+    const localX = (e.clientX - ptRect.left) * scaleX;
+    let idx = Math.round(((localX - padL) / plotW) * (rows.length - 1));
+    idx = Math.max(0, Math.min(rows.length - 1, idx));
+    const r = rows[idx];
+    crosshair.setAttribute('x1', xFor(idx).toFixed(1));
+    crosshair.setAttribute('x2', xFor(idx).toFixed(1));
+    crosshair.setAttribute('opacity', 1);
+    showTip(e.clientX, e.clientY, `
+      <div class="t-title">Row ${r.row} — ${r.date}</div>
+      <div class="t-row"><span>${r.activity || '(no description)'}</span></div>
+      <div class="t-row"><span>Balance</span><b>${fmt(r.balance)}</b></div>
+    `);
+  });
+  catcher.addEventListener('mouseleave', () => { hideTip(); crosshair.setAttribute('opacity', 0); });
+}
+
+// ---- Ledger table ----
+let sortKey = 'row', sortDir = 1;
+function renderTable(rows) {
+  rows = rows.slice();
+  rows.sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === 'received' || sortKey === 'disbursed' || sortKey === 'balance') { av = av||0; bv = bv||0; }
+    if (sortKey === 'activity') { av = av||''; bv = bv||''; }
+    if (av < bv) return -1*sortDir;
+    if (av > bv) return 1*sortDir;
+    return 0;
+  });
+  const body = document.getElementById('ledgerBody');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No entries match the current filters.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr class="${!r.activity ? 'flagged' : ''}">
+      <td>${r.date}</td>
+      <td class="activity-cell">${r.activity || '<span class="tag missing">missing</span>'}</td>
+      <td><span class="tag">${r.category}</span></td>
+      <td class="num">${r.received ? fmt(r.received) : '—'}</td>
+      <td class="num">${r.disbursed ? fmt(r.disbursed) : '—'}</td>
+      <td class="num">${fmt(r.balance)}</td>
+    </tr>
+  `).join('');
+}
+document.querySelectorAll('table.ledger th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    document.querySelectorAll('table.ledger th .sort-arrow').forEach(a => a.textContent = '');
+    th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '▲' : '▼';
+    renderTable(filteredTxns());
+  });
+});
+
+// ---- Master render ----
+function renderAll() {
+  const rows = filteredTxns();
+  const balRows = balanceRows();
+  document.getElementById('filterResults').textContent = `Showing ${rows.length} of ${ALL_TXNS.length} entries`;
+  renderStats(rows, balRows);
+  renderCallout(rows);
+  renderCategoryBars(rows);
+  renderMonthChart(rows);
+  renderBalanceChart(balRows);
+  renderTable(rows);
+}
+renderAll();
+</script>
